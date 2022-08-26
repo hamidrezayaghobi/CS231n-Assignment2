@@ -1,0 +1,1448 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.1'
+      jupytext_version: 1.2.4
+  kernelspec:
+    display_name: Python 3
+    language: python
+    name: python3
+---
+
+<div align=center>
+		
+<p></p>
+<p></p>
+<font size=5>
+In the Name of God
+<font/>
+<p></p>
+ <br/>
+    <br/>
+    <br/>
+<font color=#FF7500>
+Sharif University of Technology - Departmenet of Computer Engineering
+</font>
+<p></p>
+<font color=blue>
+Artifical Intelligence - Dr. Mohammad Hossein Rohban
+</font>
+<br/>
+<br/>
+Spring 2022
+
+</div>
+
+<hr/>
+		<div align=center>
+		    <font color=red size=6>
+			    <br />
+Practical Assignment 6 Neural Networks
+            	<br/>
+			</font>
+    <br/>
+    <br/>
+<font size=4>
+                <br/><b>
+              Cheating is Strongly Prohibited
+                </b><br/><br/>
+                <font color=red>
+Please run all the cells.
+     </font>
+</font>
+                <br/>
+    </div>
+
+
+# Personal Data
+
+```{python}
+# Set your student number
+student_number = 98109786 
+Name = 'HamidReza'
+Last_Name = 'Yaghoubi Araghi'
+```
+
+# Rules
+- You are not allowed to add or remove cells. You **must use the provided space to write your code**. If you don't follow this rule, **your Practical Assignment won't be graded**. 
+- You **are** allowed to use **for loops** only in the implementation of the **FullyConnectedNet** class. 
+
+```{python}
+# !pip install future
+# !pip install pandas
+# !pip install torchvision
+```
+
+```{python}
+from Helper_codes.gradient_check import eval_numerical_gradient, eval_numerical_gradient_array
+from Helper_codes.MNIST_data import get_MNIST_data, get_normalized_MNIST_data
+from builtins import range
+import numpy as np
+import matplotlib.pyplot as plt
+from Helper_codes.solver import *
+import pandas as pd
+from sklearn.datasets import fetch_california_housing
+from Helper_codes.california_housing import *
+
+
+# %matplotlib inline
+plt.rcParams['figure.figsize'] = (10.0, 8.0) # set default size of plots
+plt.rcParams['image.cmap'] = 'gray'
+
+def rel_error(x, y):
+  """ returns relative error """
+  return np.max(np.abs(x - y) / (np.maximum(1e-8, np.abs(x) + np.abs(y))))
+
+def print_mean_std(x,axis=0):
+    print(f"  means: {x.mean(axis=axis)}")
+    print(f"  stds:  {x.std(axis=axis)}\n")
+```
+
+# Fully-Connected Neural Nets
+In this exercise we will implement fully-connected networks using a modular approach. For each layer we will implement a `forward` and a `backward` function. The `forward` function will receive inputs, weights, and other parameters and will return both an output and a `cache` object storing data needed for the backward pass, like this:
+
+```python
+def layer_forward(x, w):
+  """ Receive inputs x and weights w """
+  # Do some computations ...
+  z = # ... some intermediate value
+  # Do some more computations ...
+  out = # the output
+   
+  cache = (x, w, z, out) # Values we need to compute gradients
+   
+  return out, cache
+```
+
+The backward pass will receive upstream derivatives and the `cache` object, and will return gradients with respect to the inputs and weights, like this:
+
+```python
+def layer_backward(dout, cache):
+  """
+  Receive dout (derivative of loss with respect to outputs) and cache,
+  and compute derivative with respect to inputs.
+  """
+  # Unpack cache values
+  x, w, z, out = cache
+  
+  # Use values in cache to compute derivatives
+  dx = # Derivative of loss with respect to x
+  dw = # Derivative of loss with respect to w
+  
+  return dx, dw
+```
+
+After implementing a bunch of layers this way, we will be able to easily combine them to build classifiers with different architectures.
+
+
+# Affine layer: forward
+Implement the `affine_forward` function.
+
+```{python}
+def affine_forward(x, w, b):
+    """
+    Computes the forward pass for an affine (fully-connected) layer.
+
+    The input x has shape (N, d_1, ..., d_k) and contains a minibatch of N
+    examples, where each example x[i] has shape (d_1, ..., d_k). We will
+    reshape each input into a vector of dimension D = d_1 * ... * d_k, and
+    then transform it to an output vector of dimension M.
+
+    Inputs:
+    - x: A numpy array containing input data, of shape (N, d_1, ..., d_k)
+    - w: A numpy array of weights, of shape (D, M)
+    - b: A numpy array of biases, of shape (M,)
+
+    Returns a tuple of:
+    - out: output, of shape (N, M)
+    - cache: (x, w, b)
+    """
+    ###########################################################################
+    # TODO: Implement the affine forward pass. Store the result in out. You   #
+    # will need to reshape the input into rows.                               #
+    ###########################################################################
+    # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+
+    dim_size = x[0].shape
+    # first is count of minibatch, second one is count of sample in each batch, thid one is count of feature for each sample
+
+    # (N, D) x (D, M) + (1, M)
+    # x.shape[0] = conut of batch = 2
+    # np.prod(dim_size) = count of all observatoin for each minibatch = 120
+    # out = <w, x> + b
+    out = x.reshape(x.shape[0], np.prod(dim_size)).dot(w) + b.reshape(1, -1) 
+    cache = (x, w, b)
+    return out, cache
+```
+
+You can test your implementaion by running the following:
+
+```{python}
+# Test the affine_forward function
+
+num_inputs = 2
+input_shape = (4, 5, 6)
+output_dim = 3
+
+input_size = num_inputs * np.prod(input_shape)
+weight_size = output_dim * np.prod(input_shape)
+
+x = np.linspace(-0.1, 0.5, num=input_size).reshape(num_inputs, *input_shape)
+w = np.linspace(-0.2, 0.3, num=weight_size).reshape(np.prod(input_shape), output_dim)
+b = np.linspace(-0.3, 0.1, num=output_dim)
+
+out, _ = affine_forward(x, w, b)
+correct_out = np.array([[ 1.49834967,  1.70660132,  1.91485297],
+                        [ 3.25553199,  3.5141327,   3.77273342]])
+
+# Compare your output with ours. The error should be around e-9 or less.
+print('Testing affine_forward function:')
+print('difference: ', rel_error(out, correct_out))
+```
+
+# Affine layer: backward
+Now implement the `affine_backward` function and test your implementation using numeric gradient checking.
+
+```{python}
+def affine_backward(dout, cache):
+    """
+    Computes the backward pass for an affine layer.
+
+    Inputs:
+    - dout: Upstream derivative, of shape (N, M)
+    - cache: Tuple of:
+      - x: Input data, of shape (N, d_1, ... d_k)
+      - w: Weights, of shape (D, M)
+      - b: Biases, of shape (M,)
+
+    Returns a tuple of:
+    - dx: Gradient with respect to x, of shape (N, d1, ..., d_k)
+    - dw: Gradient with respect to w, of shape (D, M)
+    - db: Gradient with respect to b, of shape (M,)
+    """    
+    ###########################################################################
+    # TODO: Implement the affine backward pass.                               #
+    ###########################################################################
+    # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+    x, w, b = cache
+    
+    N = x.shape[0]
+    
+    dim_shape = np.prod(x[0].shape)
+    # dim_shape = 120 = 4 * 5 * 6
+    X = x.reshape(N, dim_shape)
+
+    dx = dout.dot(w.T).reshape(x.shape)
+
+    dw = X.T.dot(dout)
+    
+    db = dout.sum(axis = 0)
+    
+    return dx, dw, db
+```
+
+```{python}
+# Test the affine_backward function
+np.random.seed(231)
+x = np.random.randn(10, 2, 3)
+w = np.random.randn(6, 5)
+b = np.random.randn(5)
+dout = np.random.randn(10, 5)
+
+dx_num = eval_numerical_gradient_array(lambda x: affine_forward(x, w, b)[0], x, dout)
+dw_num = eval_numerical_gradient_array(lambda w: affine_forward(x, w, b)[0], w, dout)
+db_num = eval_numerical_gradient_array(lambda b: affine_forward(x, w, b)[0], b, dout)
+
+_, cache = affine_forward(x, w, b)
+dx, dw, db = affine_backward(dout, cache)
+
+# The error should be around e-10 or less
+print('Testing affine_backward function:')
+print('dx error: ', rel_error(dx_num, dx))
+print('dw error: ', rel_error(dw_num, dw))
+print('db error: ', rel_error(db_num, db))
+```
+
+# ReLU activation: forward
+Implement the forward pass for the ReLU activation function in the `relu_forward` function and test your implementation using numeric gradient checking.
+
+```{python}
+def relu_forward(x):
+    """
+    Computes the forward pass for a layer of rectified linear units (ReLUs).
+
+    Input:
+    - x: Inputs, of any shape
+
+    Returns a tuple of:
+    - out: Output, of the same shape as x
+    - cache: x
+    """
+    ###########################################################################
+    # TODO: Implement the ReLU forward pass.                                  #
+    ###########################################################################
+    # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+    out = np.maximum(0, x)
+    cache = x
+    return out, cache
+```
+
+```{python}
+# Test the relu_forward function
+
+x = np.linspace(-0.5, 0.5, num=12).reshape(3, 4)
+
+out, _ = relu_forward(x)
+correct_out = np.array([[ 0.,          0.,          0.,          0.,        ],
+                        [ 0.,          0.,          0.04545455,  0.13636364,],
+                        [ 0.22727273,  0.31818182,  0.40909091,  0.5,       ]])
+
+# Compare your output with ours. The error should be on the order of e-8
+print('Testing relu_forward function:')
+print('difference: ', rel_error(out, correct_out))
+```
+
+# ReLU activation: backward
+Now implement the backward pass for the ReLU activation function in the `relu_backward` function.
+
+```{python}
+def relu_backward(dout, cache):
+    """
+    Computes the backward pass for a layer of rectified linear units (ReLUs).
+
+    Input:
+    - dout: Upstream derivatives, of any shape
+    - cache: Input x, of same shape as dout
+
+    Returns:
+    - dx: Gradient with respect to x
+    """
+    ###########################################################################
+    # TODO: Implement the ReLU backward pass.                                 #
+    ###########################################################################
+    # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    
+    x = cache
+    dx = dout
+    dx[x < 0] = 0
+    return dx
+```
+
+You can test your implementation using numeric gradient checking:
+
+```{python}
+# Test the relu_backward function
+np.random.seed(231)
+x = np.random.randn(10, 10)
+dout = np.random.randn(*x.shape)
+
+dx_num = eval_numerical_gradient_array(lambda x: relu_forward(x)[0], x, dout)
+
+_, cache = relu_forward(x)
+dx = relu_backward(dout, cache)
+
+# The error should be on the order of e-12
+print('Testing relu_backward function:')
+print('dx error: ', rel_error(dx_num, dx))
+```
+
+# Sigmoid activation: forward
+Implement the forward pass for the Sigmoid activation function in the `sigmoid_forward` function and test your implementation using numeric gradient checking.
+
+```{python}
+def sigmoid_forward(x):
+    """
+    Computes the forward pass for a layer of Sigmoid.
+
+    Input:
+    - x: Inputs, of any shape
+
+    Returns a tuple of:
+    - out: Output, of the same shape as x
+    - cache: x
+    """
+    ###########################################################################
+    # TODO: Implement the Sigmoid forward pass.                               #
+    ###########################################################################
+    # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+    cache = x
+    out = 1 / (1 + np.exp(-x))
+    return out, cache
+```
+
+```{python}
+# Test the sigmoid_forward function
+
+x = np.linspace(-6, 6, num=12).reshape(3, 4)
+
+out, _ = sigmoid_forward(x)
+correct_out = np.array([[0.00247262, 0.00732514, 0.0214955 , 0.06138311],
+                        [0.16296047, 0.36691963, 0.63308037, 0.83703953],
+                        [0.93861689, 0.9785045 , 0.99267486, 0.99752738]])
+
+# Compare your output with ours. The error should be on the order of e-7
+print('Testing sigmoid_forward function:')
+print('difference: ', rel_error(out, correct_out))
+```
+
+# Sigmoid activation: backward
+Now implement the backward pass for the Sigmoid activation function in the `sigmoid_backward` function.
+
+```{python}
+def sigmoid_backward(dout, cache):
+    """
+    Computes the backward pass for a layer of Sigmoid.
+
+    Input:
+    - dout: Upstream derivatives, of any shape
+    - cache: Input x, of same shape as dout
+
+    Returns:
+    - dx: Gradient with respect to x
+    """
+    ###########################################################################
+    # TODO: Implement the Sigmoid backward pass.                              #
+    ###########################################################################
+    # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    
+    x = cache
+    sigmoid = 1 / (1 + np.exp(-x))
+    d_sigmoid_wx = dout * sigmoid * (1 - sigmoid)
+    return d_sigmoid_wx
+```
+
+You can test your implementation using numeric gradient checking:
+
+```{python}
+# Test the sigmoid_backward function
+np.random.seed(231)
+x = np.random.randn(10, 10)
+dout = np.random.randn(*x.shape)
+
+dx_num = eval_numerical_gradient_array(lambda x: sigmoid_forward(x)[0], x, dout)
+
+_, cache = sigmoid_forward(x)
+dx = sigmoid_backward(dout, cache)
+
+# The error should be on the order of e-11
+print('Testing sigmoid_backward function:')
+print('dx error: ', rel_error(dx_num, dx))
+```
+
+# "Sandwich" layers
+There are some common patterns of layers that are frequently used in neural nets. For example, affine layers are frequently followed by a ReLU nonlinearity. Implement the forward and backward pass for the affine layer followed by a ReLU nonlinearity in the `affine_relu_forward` and `affine_relu_backward` functions. 
+
+```{python}
+def affine_relu_forward(x, w, b):
+    """
+    Convenience layer that performs an affine transform followed by a ReLU
+
+    Inputs:
+    - x: Input to the affine layer
+    - w, b: Weights for the affine layer
+
+    Returns a tuple of:
+    - out: Output from the ReLU
+    - cache: Object to give to the backward pass
+    """
+    ###########################################################################
+    # TODO: Implement the affine-RELU forward pass.                           #
+    ###########################################################################
+    # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    
+    affine_out, affine_cache = affine_forward(x, w, b)
+    out, relu_cache = relu_forward(affine_out)
+    cache = (affine_cache, relu_cache)
+    return out, cache
+```
+
+```{python}
+def affine_relu_backward(dout, cache):
+    """
+    Backward pass for the affine-relu convenience layer
+    
+    Inputs:
+    - dout: Upstream derivatives, of any shape
+    - cache: (fc_cache, relu_cache)
+      
+    Returns a tuple of:
+    - dx: Gradient with respect to x
+    - dw: Gradient with respect to w
+    - db: Gradient with respect to b
+    """
+    ###########################################################################
+    # TODO: Implement the affine-RELU backward pass.                          #
+    ###########################################################################
+    # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    
+    affine_cache_relue_cache, relu_cache = cache
+    dx, dw, db = affine_backward(relu_backward(dout, relu_cache), affine_cache_relue_cache)
+    return dx, dw, db
+```
+
+You can test your implementation using numeric gradient checking:
+
+```{python}
+# Test the affine_relu_backward function
+
+np.random.seed(231)
+x = np.random.randn(2, 3, 4)
+w = np.random.randn(12, 10)
+b = np.random.randn(10)
+dout = np.random.randn(2, 10)
+
+out, cache = affine_relu_forward(x, w, b)
+dx, dw, db = affine_relu_backward(dout, cache)
+
+dx_num = eval_numerical_gradient_array(lambda x: affine_relu_forward(x, w, b)[0], x, dout)
+dw_num = eval_numerical_gradient_array(lambda w: affine_relu_forward(x, w, b)[0], w, dout)
+db_num = eval_numerical_gradient_array(lambda b: affine_relu_forward(x, w, b)[0], b, dout)
+
+# Relative error should be around e-10 or less
+print('Testing affine_relu_forward and affine_relu_backward:')
+print('dx error: ', rel_error(dx_num, dx))
+print('dw error: ', rel_error(dw_num, dw))
+print('db error: ', rel_error(db_num, db))
+```
+
+# Batch Normalization: Forward Pass
+Implement the batch normalization forward pass in the function `batchnorm_forward`.
+
+```{python}
+def batchnorm_forward(x, gamma, beta, bn_param):
+    """Forward pass for batch normalization.
+
+    During training the sample mean and (uncorrected) sample variance are
+    computed from minibatch statistics and used to normalize the incoming data.
+    During training we also keep an exponentially decaying running mean of the
+    mean and variance of each feature, and these averages are used to normalize
+    data at test-time.
+
+    At each timestep we update the running averages for mean and variance using
+    an exponential decay based on the momentum parameter:
+
+    running_mean = momentum * running_mean + (1 - momentum) * sample_mean
+    running_var = momentum * running_var + (1 - momentum) * sample_var
+
+    Input:
+    - x: Data of shape (N, D)
+    - gamma: Scale parameter of shape (D,)
+    - beta: Shift paremeter of shape (D,)
+    - bn_param: Dictionary with the following keys:
+      - mode: 'train' or 'test'; required
+      - eps: Constant for numeric stability
+      - momentum: Constant for running mean / variance.
+      - running_mean: Array of shape (D,) giving running mean of features
+      - running_var Array of shape (D,) giving running variance of features
+
+    Returns a tuple of:
+    - out: of shape (N, D)
+    - cache: A tuple of values needed in the backward pass
+    """
+    mode = bn_param["mode"]
+    eps = bn_param.get("eps", 1e-5)
+    momentum = bn_param.get("momentum", 0.9)
+
+    N, D = x.shape
+    running_mean = bn_param.get("running_mean", np.zeros(D, dtype=x.dtype))
+    running_var = bn_param.get("running_var", np.zeros(D, dtype=x.dtype))
+
+    out, cache = None, None
+    if mode == "train":
+        #######################################################################
+        # TODO: Implement the training-time forward pass for batch norm.      #
+        # Use minibatch statistics to compute the mean and variance, use      #
+        # these statistics to normalize the incoming data, and scale and      #
+        # shift the normalized data using gamma and beta.                     #
+        #                                                                     #
+        # You should store the output in the variable out. Any intermediates  #
+        # that you need for the backward pass should be stored in the cache   #
+        # variable.                                                           #
+        #                                                                     #
+        # You should also use your computed sample mean and variance together #
+        # with the momentum variable to update the running mean and running   #
+        # variance, storing your result in the running_mean and running_var   #
+        # variables.                                                          #
+        #                                                                     #
+        # Note that though you should be keeping track of the running         #
+        # variance, you should normalize the data based on the standard       #
+        # deviation (square root of variance) instead!                        #
+        #######################################################################
+        # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+        mean = x.mean(axis=0)
+        var = x.var(axis=0) + eps
+        std = np.sqrt(var)
+        z = (x - mean) / std
+        out = gamma * z + beta
+        
+        layernorm = bn_param.get('layernorm', 0)
+        if layernorm == 0:
+            running_mean = momentum * running_mean + (1 - momentum) * mean
+            running_var = momentum * running_var + (1 - momentum) * (std**2)
+        cache={'x': x, 'mean': mean, 'std': std, 
+               'gamma': gamma, 'z': z, 'var': var, 
+               'axis': layernorm}
+        
+        # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+        #######################################################################
+        #                           END OF YOUR CODE                          #
+        #######################################################################
+    elif mode == "test":
+        #######################################################################
+        # TODO: Implement the test-time forward pass for batch normalization. #
+        # Use the running mean and variance to normalize the incoming data,   #
+        # then scale and shift the normalized data using gamma and beta.      #
+        # Store the result in the out variable.                               #
+        #######################################################################
+        # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+        out = gamma * (x - running_mean) / np.sqrt(running_var + eps) + beta
+
+        # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+        #######################################################################
+        #                          END OF YOUR CODE                           #
+        #######################################################################
+    else:
+        raise ValueError('Invalid forward batchnorm mode "%s"' % mode)
+
+    # Store the updated running means back into bn_param
+    bn_param["running_mean"] = running_mean
+    bn_param["running_var"] = running_var
+
+    return out, cache
+```
+
+Run the following to test your implementation.
+
+```{python}
+# Check the training-time forward pass by checking means and variances
+# of features both before and after batch normalization   
+
+# Simulate the forward pass for a two-layer network.
+np.random.seed(231)
+N, D1, D2, D3 = 200, 50, 60, 3
+X = np.random.randn(N, D1)
+W1 = np.random.randn(D1, D2)
+W2 = np.random.randn(D2, D3)
+a = np.maximum(0, X.dot(W1)).dot(W2)
+
+print('Before batch normalization:')
+print_mean_std(a,axis=0)
+
+gamma = np.ones((D3,))
+beta = np.zeros((D3,))
+
+# Means should be close to zero and stds close to one.
+print('After batch normalization (gamma=1, beta=0)')
+a_norm, _ = batchnorm_forward(a, gamma, beta, {'mode': 'train'})
+print_mean_std(a_norm,axis=0)
+
+gamma = np.asarray([1.0, 2.0, 3.0])
+beta = np.asarray([11.0, 12.0, 13.0])
+
+# Now means should be close to beta and stds close to gamma.
+print('After batch normalization (gamma=', gamma, ', beta=', beta, ')')
+a_norm, _ = batchnorm_forward(a, gamma, beta, {'mode': 'train'})
+print_mean_std(a_norm,axis=0)
+```
+
+```{python}
+# Check the test-time forward pass by running the training-time
+# forward pass many times to warm up the running averages, and then
+# checking the means and variances of activations after a test-time
+# forward pass.
+
+np.random.seed(231)
+N, D1, D2, D3 = 200, 50, 60, 3
+W1 = np.random.randn(D1, D2)
+W2 = np.random.randn(D2, D3)
+
+bn_param = {'mode': 'train'}
+gamma = np.ones(D3)
+beta = np.zeros(D3)
+
+for t in range(50):
+    X = np.random.randn(N, D1)
+    a = np.maximum(0, X.dot(W1)).dot(W2)
+    batchnorm_forward(a, gamma, beta, bn_param)
+
+bn_param['mode'] = 'test'
+X = np.random.randn(N, D1)
+a = np.maximum(0, X.dot(W1)).dot(W2)
+a_norm, _ = batchnorm_forward(a, gamma, beta, bn_param)
+
+# Means should be close to zero and stds close to one, but will be
+# noisier than training-time forward passes.
+print('After batch normalization (test-time):')
+print_mean_std(a_norm,axis=0)
+```
+
+# Batch Normalization: Backward Pass
+Now implement the backward pass for batch normalization in the function `batchnorm_backward`.
+
+In the forward pass, given a set of inputs $X=\begin{bmatrix}x_1\\x_2\\...\\x_N\end{bmatrix}$, 
+
+we first calculate the mean $\mu$ and variance $var$.
+With $\mu$ and $var$ calculated, we can calculate the standard deviation $\sigma$  and normalized data $Y$.
+The equations and graph illustration below describe the computation ($y_i$ is the i-th element of the vector $Y$).
+
+\begin{align}
+& \mu=\frac{1}{N}\sum_{k=1}^N x_k  &  var=\frac{1}{N}\sum_{k=1}^N (x_k-\mu)^2 \\
+& \sigma=\sqrt{v+\epsilon}         &  y_i=\frac{x_i-\mu}{\sigma}
+\end{align}
+
+
+<img src="imgs/batchnorm_graph.png">
+
+
+You should make sure each of the intermediary gradient derivations are all as simplified as possible, for ease of implementation.
+
+```{python}
+def batchnorm_backward(dout, cache):
+    """Backward pass for batch normalization.
+
+    For this implementation, you should write out a computation graph for
+    batch normalization on paper and propagate gradients backward through
+    intermediate nodes.
+
+    Inputs:
+    - dout: Upstream derivatives, of shape (N, D)
+    - cache: Variable of intermediates from batchnorm_forward.
+
+    Returns a tuple of:
+    - dx: Gradient with respect to inputs x, of shape (N, D)
+    - dgamma: Gradient with respect to scale parameter gamma, of shape (D,)
+    - dbeta: Gradient with respect to shift parameter beta, of shape (D,)
+    """
+    ###########################################################################
+    # TODO: Implement the backward pass for batch normalization. Store the    #
+    # results in the dx, dgamma, and dbeta variables.                         #
+    ###########################################################################
+    # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+    N = dout.shape[0]
+    z = cache['z']
+    df_w_dz = dout * cache['gamma']
+    df_w_dz_sum = np.sum(df_w_dz, axis=0)
+    dx = df_w_dz - df_w_dz_sum / N - np.sum(df_w_dz * z, axis=0) * z / N
+    dx = dx / cache['std']
+
+    dbeta = dout.sum(axis=cache['axis'])
+    dgamma = np.sum(dout * cache['z'], axis=cache['axis'])
+
+    return dx, dgamma, dbeta
+```
+
+Run the following to numerically check your backward pass.
+
+```{python}
+# Gradient check batchnorm backward pass.
+np.random.seed(231)
+N, D = 4, 5
+x = 5 * np.random.randn(N, D) + 12
+gamma = np.random.randn(D)
+beta = np.random.randn(D)
+dout = np.random.randn(N, D)
+
+bn_param = {'mode': 'train'}
+fx = lambda x: batchnorm_forward(x, gamma, beta, bn_param)[0]
+fg = lambda a: batchnorm_forward(x, a, beta, bn_param)[0]
+fb = lambda b: batchnorm_forward(x, gamma, b, bn_param)[0]
+
+dx_num = eval_numerical_gradient_array(fx, x, dout)
+da_num = eval_numerical_gradient_array(fg, gamma.copy(), dout)
+db_num = eval_numerical_gradient_array(fb, beta.copy(), dout)
+
+_, cache = batchnorm_forward(x, gamma, beta, bn_param)
+dx, dgamma, dbeta = batchnorm_backward(dout, cache)
+
+# You should expect to see relative errors between 1e-13 and 1e-8.
+print('dx error: ', rel_error(dx_num, dx))
+print('dgamma error: ', rel_error(da_num, dgamma))
+print('dbeta error: ', rel_error(db_num, dbeta))
+```
+
+# Loss layer: Softmax
+Now implement the loss and gradient for softmax in the `softmax_loss` function.
+
+```{python}
+def softmax_loss(x, y):
+    """
+    Computes the loss and gradient for softmax classification.
+
+    Inputs:
+    - x: Input data, of shape (N, C) where x[i, j] is the score for the jth
+      class for the ith input.
+    - y: Vector of labels, of shape (N,) where y[i] is the label for x[i] and
+      0 <= y[i] < C
+
+    Returns a tuple of:
+    - loss: Scalar giving the loss
+    - dx: Gradient of the loss with respect to x
+    """
+    ###########################################################################
+    # TODO: Implement the softmax_loss function.                              #
+    ###########################################################################
+    # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+    logits_shifted = x - np.max(x, axis=1, keepdims=True)
+    z = np.sum(np.exp(logits_shifted), axis=1, keepdims=True)
+    log_prob = logits_shifted - np.log(z)
+    N = x.shape[0]
+    dx = np.exp(log_prob)
+    dx[np.arange(N), y] -= 1
+    dx = dx / N
+    
+    loss = -np.sum(log_prob[np.arange(N), y]) / N
+    return loss, dx
+```
+
+You can make sure that the implementations are correct by running the following:
+
+```{python}
+np.random.seed(231)
+num_classes, num_inputs = 10, 50
+x = 0.001 * np.random.randn(num_inputs, num_classes)
+y = np.random.randint(num_classes, size=num_inputs)
+
+dx_num = eval_numerical_gradient(lambda x: softmax_loss(x, y)[0], x, verbose=False)
+loss, dx = softmax_loss(x, y)
+
+# Test softmax_loss function. Loss should be close to 2.3 and dx error should be around e-8
+print('\nTesting softmax_loss:')
+print('loss: ', loss)
+print('dx error: ', rel_error(dx_num, dx))
+```
+
+# Loss layer: MSE
+Now implement the loss and gradient for mean squared error in the `mse_loss` function.
+
+```{python}
+def mse_loss(x, y):
+    """
+    Computes the loss and gradient for MSE loss.
+
+    Inputs:
+    - x: Input data, of shape (N,) where x[i] is the predicted vector for 
+        the ith input.
+    - y: Vector of target values, of shape (N,) where y[i] is the target value
+        for the ith input.
+
+    Returns a tuple of:
+    - loss: Scalar giving the loss
+    - dx: Gradient of the loss with respect to x
+    """
+    ###########################################################################
+    # TODO: Implement the mse_loss function.                                  #
+    ###########################################################################
+    # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+#     loss = np.square(x - y)
+#     loss = loss.mean(axis=0)
+#     dx = 2 / len(x) * (x - y)
+
+    difference = (x.reshape(y.shape) - y) ** 2 / x.shape[0]
+    loss = np.sum(difference)
+    dx = 2 * (x.reshape(y.shape) - y) / x.shape[0]
+    dx = dx.reshape(x.shape[0])
+    return loss, dx
+```
+
+You can make sure that the implementations are correct by running the following:
+
+```{python}
+np.random.seed(231)
+num_inputs = 50
+x = np.random.randn(num_inputs)
+y = np.random.randn(num_inputs)
+
+dx_num = eval_numerical_gradient(lambda x: mse_loss(x, y)[0], x, verbose=False)
+loss, dx = mse_loss(x, y)
+
+# Test mse_loss function. Loss should be close to 1.9 and dx error should be around e-9
+print('\nTesting mse_loss:')
+print('loss: ', loss)
+print('dx error: ', rel_error(dx_num, dx))
+```
+
+# Multi-Layer Fully Connected Network
+In this part, you will implement a fully connected network with an arbitrary number of hidden layers.
+
+```{python}
+class FullyConnectedNet(object):
+    """Class for a multi-layer fully connected neural network.
+
+    Network contains an arbitrary number of hidden layers, ReLU nonlinearities,
+    and a softmax loss function for a classification problem or the MSE loss function for 
+    a regression problem. This will also implement batch normalization as an option. 
+    For a network with L layers, the architecture will be
+
+    {affine - [batchnorm] - relu} x (L - 1) - affine - softmax/mse
+
+    where batch normalization is optional in each layer and the {...} block is
+    repeated L - 1 times.
+
+    Learnable parameters are stored in the self.params dictionary and will be learned
+    using the Solver class.
+    """
+
+    def __init__(
+        self,
+        category,
+        hidden_dims,
+        normalization,
+        input_dim=784,
+        output_dim=10,
+        reg=0.0,
+        weight_scale=1e-2,
+        dtype=np.float32,
+    ):
+        """Initialize a new FullyConnectedNet.
+
+        Inputs:
+        - category: The type of the problem. Valid values are "classification",
+            "regression".
+        - hidden_dims: A list of integers giving the size of each hidden layer.
+        - normalization: A list of booleans which shows that we have batch 
+            normalization after the affine layer.
+        - input_dim: An integer giving the size of the input.
+        - output_dim: An integer giving the number of classes to classify. It
+            is 1 for a regression problem.
+        - reg: Scalar giving L2 regularization strength.
+        - weight_scale: Scalar giving the standard deviation for random
+            initialization of the weights.
+        - dtype: A numpy datatype object; all computations will be performed using
+            this datatype. float32 is faster but less accurate, so you should use
+            float64 for numeric gradient checking.
+        """
+        self.category = category
+        self.normalization = normalization
+        self.reg = reg
+        self.num_layers = 1 + len(hidden_dims)
+        self.dtype = dtype
+        self.params = {}
+
+        ############################################################################
+        # TODO: Initialize the parameters of the network, storing all values in    #
+        # the self.params dictionary. Store weights and biases for the first layer #
+        # in W1 and b1; for the second layer use W2 and b2, etc. Weights should be #
+        # initialized from a normal distribution centered at 0 with standard       #
+        # deviation equal to weight_scale. Biases should be initialized to zero.   #
+        #                                                                          #
+        # When using batch normalization, store scale and shift parameters for the #
+        # first layer in gamma1 and beta1; for the second layer use gamma2 and     #
+        # beta2, etc. Scale parameters should be initialized to ones and shift     #
+        # parameters should be initialized to zeros.                               #
+        ############################################################################
+        # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+        layers_dims = input_dim
+        for i in range(self.num_layers - 1):
+            self.params["w" + str(i + 1)] = np.random.normal(0, weight_scale, (layers_dims, hidden_dims[i]))
+            self.params["b" + str(i + 1)] = np.zeros(hidden_dims[i])
+            
+            if normalization[i]:
+                self.params["gamma" + str(i + 1)] = np.ones(hidden_dims[i])
+                self.params["beta" + str(i + 1)] = np.zeros(hidden_dims[i])
+                
+            layers_dims = hidden_dims[i]
+            
+        index = self.num_layers
+        self.params["w" + str(index)] = np.random.normal(0, weight_scale, (layers_dims,output_dim))
+        self.params["b" + str(index)] = np.zeros(output_dim)
+        # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+        ############################################################################
+        #                             END OF YOUR CODE                             #
+        ############################################################################
+
+        # With batch normalization we need to keep track of running means and
+        # variances, so we need to pass a special bn_param object to each batch
+        # normalization layer. You should pass self.bn_params[0] to the forward pass
+        # of the first batch normalization layer, self.bn_params[1] to the forward
+        # pass of the second batch normalization layer, etc.
+        self.bn_params = [{"mode": "train"} for i in range(self.num_layers - 1)]
+
+        # Cast all parameters to the correct datatype.
+        for k, v in self.params.items():
+            self.params[k] = v.astype(dtype)
+
+    def loss(self, X, y=None):
+        """Compute loss and gradient for the fully connected net.
+        
+        Inputs:
+        - X: Array of input data of shape (N, d_1, ..., d_k)
+        - y: Array of labels / target values, of shape (N,). y[i] gives the 
+            label / target value for X[i].
+
+        Returns:
+        If y is None, then run a test-time forward pass of the model and return
+        scores for a classification problem or the predicted_values for 
+        a regression problem:
+        - out: Array of shape (N, C) / (N, ) giving classification scores / predicted values, where 
+        scores[i, c] is the classification score for X[i] and class c / predicted_values[i]
+        is the predicted value for X[i].
+            
+
+        If y is not None, then run a training-time forward and backward pass and
+        return a tuple of:
+        - loss: Scalar value giving the loss
+        - grads: Dictionary with the same keys as self.params, mapping parameter
+            names to gradients of the loss with respect to those parameters.
+        """
+        X = X.astype(self.dtype)
+        mode = "test" if y is None else "train"
+
+        # Set train/test mode for batchnorm params since they
+        # behave differently during training and testing.
+        for bn_param in self.bn_params:
+            bn_param["mode"] = mode
+        ############################################################################
+        # TODO: Implement the forward pass for the fully connected net, computing  #
+        # the class scores / target values for X and storing them in the out       #
+        #  variable.                                                               #
+        #                                                                          #
+        # When using batch normalization, you'll need to pass self.bn_params[0] to #
+        # the forward pass for the first batch normalization layer, pass           #
+        # self.bn_params[1] to the forward pass for the second batch normalization #
+        # layer, etc.                                                              #
+        ############################################################################
+        # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+        x = X
+        caches = []
+        
+        for i in range(self.num_layers - 1):
+            caches.append({})
+            w = self.params["w" + str(i + 1)]
+            b = self.params["b" + str(i + 1)]
+            out, affine_cache = affine_forward(x,w,b)
+            caches[i]['affine'] = affine_cache
+            
+            if self.normalization[i]:
+                gamma = self.params["gamma" + str(i + 1)]
+                beta = self.params["beta" + str(i + 1)]
+                out, normal_cache = batchnorm_forward(out, gamma, beta, self.bn_params[i])
+                caches[i]['normal'] = normal_cache
+
+            x, cache  = relu_forward(out)
+            caches[i]['relu'] = cache
+        caches.append({})
+        
+        w = self.params["w" + str(self.num_layers)]
+        b = self.params["b" + str(self.num_layers)]
+#         print(b)
+        out, affine_cache = affine_forward(x, w, b)
+        caches[self.num_layers - 1]['affine'] = affine_cache
+        # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+        ############################################################################
+        #                             END OF YOUR CODE                             #
+        ############################################################################
+
+        # If test mode return early.
+        if mode == "test":
+            return out
+        
+        loss, grads = 0.0, {}
+        ############################################################################
+        # TODO: Implement the backward pass for the fully connected net. Store the #
+        # loss in the loss variable and gradients in the grads dictionary. Compute #
+        # data loss using softmax/mse, and make sure that grads[k] holds the       #
+        # gradients for self.params[k]. Don't forget to add L2 regularization!     #
+        #                                                                          #
+        # When using batch normalization, you don't need to regularize the scale   #
+        # and shift parameters.                                                    #
+        #                                                                          #
+        # NOTE: To ensure that your implementation matches ours and you pass the   #
+        # automated tests, make sure that your L2 regularization includes a factor #
+        # of 0.5 to simplify the expression for the gradient.                      #
+        ############################################################################
+        # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+        if self.category == "classification":            
+            loss, dx = softmax_loss(out, y)
+        elif self.category == 'regression':
+            loss, dx = mse_loss(out, y)
+            dx = np.reshape(dx,(-1,1))
+            
+        for i in range(self.num_layers):
+            w = self.params['w'+str(i+1)]
+            loss += 0.5 * self.reg * np.sum(w * w) 
+
+        dout = dx
+        dout, dw, db = affine_backward(dout, caches[self.num_layers - 1]['affine'])
+        grads['w' + str(self.num_layers)] = dw + self.reg * self.params['w' + str(self.num_layers)]
+        grads['b' + str(self.num_layers)] = db
+        
+        for i in range(self.num_layers - 2, -1, -1):
+            dx = relu_backward(dout,caches[i]['relu'])
+            
+            if self.normalization[i]:
+                dx , dgamma, dbeta = batchnorm_backward(dx,caches[i]['normal'])
+                
+            dx , dw , db = affine_backward(dx,caches[i]['affine'])
+            
+            if self.normalization[i]:
+#                 print(dgamma)
+                grads['gamma' + str(i + 1)] = dgamma
+                grads['beta' + str(i + 1)] = dbeta
+                
+            grads['w' + str(i + 1)] = dw + self.reg * self.params['w' + str(i + 1)]
+            grads['b' + str(i + 1)] = db
+            dout = dx
+        # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+        ############################################################################
+        #                             END OF YOUR CODE                             #
+        ############################################################################
+
+        return loss, grads
+```
+
+## Initial Loss and Gradient Check
+
+As a sanity check, run the following to check the initial loss and to gradient check the network both with and without regularization. This is a good way to see if the initial losses seem reasonable.
+
+For gradient checking, you should expect to see errors around 1e-7 or less.
+
+```{python}
+np.random.seed(231)
+N, D, H1, H2, C = 2, 15, 20, 30, 10
+X = np.random.randn(N, D)
+y = np.random.randint(C, size=(N,))
+
+for reg in [0, 3.14]:
+    print("Running check with reg = ", reg)
+    model = FullyConnectedNet(
+        "classification",
+        [H1, H2],
+        [False, False],
+        input_dim=D,
+        output_dim=C,
+        reg=reg,
+        weight_scale=5e-2,
+        dtype=np.float64
+    )
+
+    loss, grads = model.loss(X, y)
+    print("Initial loss: ", loss)
+
+    # Most of the errors should be on the order of e-7 or smaller.   
+    # NOTE: It is fine however to see an error for W2 on the order of e-5
+    # for the check when reg = 0.0
+    for name in sorted(grads):
+        f = lambda _: model.loss(X, y)[0]
+        grad_num = eval_numerical_gradient(f, model.params[name], verbose=False, h=1e-5)
+        print(f"{name} relative error: {rel_error(grad_num, grads[name])}")
+```
+
+```{python}
+np.random.seed(231)
+N, D, H1, H2, C = 2, 15, 20, 30, 10
+X = np.random.randn(N, D)
+y = np.random.randint(C, size=(N,))
+
+# You should expect losses between 1e-4~1e-10 for W, 
+# losses between 1e-08~1e-10 for b,
+# and losses between 1e-08~1e-09 for beta and gammas.
+for reg in [0, 3.14]:
+    print('Running check with reg = ', reg)
+    model = FullyConnectedNet(
+        "classification", 
+        [H1, H2],
+        [True, True],
+        input_dim=D,
+        output_dim=C,
+        reg=reg,
+        weight_scale=5e-2,
+        dtype=np.float64
+    )
+
+    loss, grads = model.loss(X, y)
+    print('Initial loss: ', loss)
+
+    for name in sorted(grads):
+        f = lambda _: model.loss(X, y)[0]
+        grad_num = eval_numerical_gradient(f, model.params[name], verbose=False, h=1e-5)
+        print('%s relative error: %.2e' % (name, rel_error(grad_num, grads[name])))
+    if reg == 0: print()
+```
+
+## SGD+Momentum
+Stochastic gradient descent with momentum is a widely used update rule that tends to make deep networks converge faster than vanilla stochastic gradient descent.
+
+Implement the SGD+momentum update rule in the function `sgd_momentum`.
+
+```{python}
+def sgd_momentum(w, dw, config=None):
+    """
+    Performs stochastic gradient descent with momentum.
+    Inputs:
+    - w: A numpy array giving the current weights.
+    - dw: A numpy array of the same shape as w giving the gradient of the
+    loss with respect to w.
+    - config: A dictionary containing hyperparameter values such as learning
+    rate, momentum.
+
+    Returns:
+      - next_w: The next point after the update.
+      - config: The config dictionary to be passed to the next iteration of the
+        update rule.
+
+    config format:
+    - learning_rate: Scalar learning rate.
+    - momentum: Scalar between 0 and 1 giving the momentum value.
+      Setting momentum = 0 reduces sgd_momentum to stochastic gradient descent.
+    - velocity: A numpy array of the same shape as w and dw used to store a
+      moving average of the gradients.
+    """
+    if config is None:
+        config = {}
+    config.setdefault("learning_rate", 1e-2)
+    config.setdefault("momentum", 0.9)
+    v = config.get("velocity", np.zeros_like(w))
+
+    next_w = None
+    ###########################################################################
+    # TODO: Implement the momentum update formula. Store the updated value in #
+    # the next_w variable. You should also use and update the velocity v.     #
+    ###########################################################################
+    # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+    v = config['momentum'] * v - config['learning_rate'] * dw
+    next_w = w + v
+
+    # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    ###########################################################################
+    #                             END OF YOUR CODE                            #
+    ###########################################################################
+    config["velocity"] = v
+
+    return next_w, config
+```
+
+Run the following to check your implementation. You should see errors less than e-8.
+
+```{python}
+N, D = 4, 5
+w = np.linspace(-0.4, 0.6, num=N*D).reshape(N, D)
+dw = np.linspace(-0.6, 0.4, num=N*D).reshape(N, D)
+v = np.linspace(0.6, 0.9, num=N*D).reshape(N, D)
+
+config = {"learning_rate": 1e-3, "velocity": v}
+next_w, _ = sgd_momentum(w, dw, config=config)
+
+expected_next_w = np.asarray([
+  [ 0.1406,      0.20738947,  0.27417895,  0.34096842,  0.40775789],
+  [ 0.47454737,  0.54133684,  0.60812632,  0.67491579,  0.74170526],
+  [ 0.80849474,  0.87528421,  0.94207368,  1.00886316,  1.07565263],
+  [ 1.14244211,  1.20923158,  1.27602105,  1.34281053,  1.4096    ]])
+expected_velocity = np.asarray([
+  [ 0.5406,      0.55475789,  0.56891579, 0.58307368,  0.59723158],
+  [ 0.61138947,  0.62554737,  0.63970526,  0.65386316,  0.66802105],
+  [ 0.68217895,  0.69633684,  0.71049474,  0.72465263,  0.73881053],
+  [ 0.75296842,  0.76712632,  0.78128421,  0.79544211,  0.8096    ]])
+
+# Should see relative errors around e-8 or less
+print("next_w error: ", rel_error(next_w, expected_next_w))
+print("velocity error: ", rel_error(expected_velocity, config["velocity"]))
+```
+
+# MNIST
+MNIST is a widely used dataset of handwritten digits that contains 60,000 handwritten digits for training a machine learning model and 10,000 handwritten digits for testing the model.
+
+```{python}
+X_train, y_train, X_val, y_val, X_test, y_test = get_MNIST_data()
+print('Train data shape: ', X_train.shape)
+print('Train labels shape: ', y_train.shape)
+print('Validation data shape: ', X_val.shape)
+print('Validation labels shape: ', y_val.shape)
+print('Test data shape: ', X_test.shape)
+print('Test labels shape: ', y_test.shape)
+```
+
+```{python}
+# Visualize some examples from the dataset.
+# We show a few examples of training images from each class.
+classes = list(range(10))
+num_classes = len(classes)
+samples_per_class = 7
+for y, cls in enumerate(classes):
+    idxs = np.flatnonzero(y_train == y)
+    idxs = np.random.choice(idxs, samples_per_class, replace=False)
+    for i, idx in enumerate(idxs):
+        plt_idx = i * num_classes + y + 1
+        plt.subplot(samples_per_class, num_classes, plt_idx)
+        plt.imshow(X_train[idx].reshape((28, 28)))
+        plt.axis('off')
+        if i == 0:
+            plt.title(cls)
+plt.show()
+```
+
+Data normalization is an important step which ensures that each input parameter has a similar data distribution. This makes convergence faster while training the network.
+
+```{python}
+X_train, X_val, X_test = get_normalized_MNIST_data(X_train, X_val, X_test)
+```
+
+# Train a Good Model!
+Open the file `solver.py` and read through it to familiarize yourself with the API. After doing so, use a `Solver` instance to train the best fully connected model that you can on MNIST, storing your best model in the `MNIST_best_model` variable. We require you to get at least 95% accuracy on the validation set using a fully connected network.
+
+```{python}
+MNIST_best_model = None
+MNIST_solver = None
+################################################################################
+# TODO: Train the best FullyConnectedNet that you can on MNIST. You might      #
+# find batch normalization. Store your best model in                           #
+# the best_model variable.                                                     #
+################################################################################
+# *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+data = {
+    'X_train': X_train,
+    'y_train': y_train.astype(int),
+    'X_val': X_val,
+    'y_val': y_val.astype(int),
+    'X_test': X_test,
+    'y_test': y_test.astype(int)
+}
+model = FullyConnectedNet(
+    'classification', 
+    [100, 90, 90],
+    [True, True, True],
+    dtype=np.float64
+)
+solver = Solver(
+    model, data,
+    update_rule=sgd_momentum,
+    optim_config={
+      'learning_rate': 1e-3,
+    },
+    lr_decay=0.95,
+    num_epochs=5, batch_size=200,
+    print_every=100
+)
+solver.train()
+
+MNIST_solver = solver
+MNIST_best_model = model
+```
+
+```{python}
+# Run this cell to visualize training loss and train / val accuracy
+
+plt.subplot(2, 1, 1)
+plt.title('Training loss')
+plt.plot(MNIST_solver.loss_history, 'o')
+plt.xlabel('Iteration')
+
+plt.subplot(2, 1, 2)
+plt.title('Accuracy')
+plt.plot(MNIST_solver.train_acc_history, '-o', label='train')
+plt.plot(MNIST_solver.val_acc_history, '-o', label='val')
+plt.plot([0.8] * len(MNIST_solver.val_acc_history), 'k--')
+plt.xlabel('Epoch')
+plt.legend(loc='lower right')
+plt.gcf().set_size_inches(15, 12)
+plt.show()
+```
+
+# Test Your Model!
+Run your best model on the validation and test sets. You should achieve at least 95% accuracy on the validation set.
+
+```{python}
+y_test_pred = np.argmax(MNIST_best_model.loss(data['X_test']), axis=1)
+y_val_pred = np.argmax(MNIST_best_model.loss(data['X_val']), axis=1)
+print('Validation set accuracy: ', (y_val_pred == data['y_val']).mean())
+print('Test set accuracy: ', (y_test_pred == data['y_test']).mean())
+```
+
+# California housing dataset
+This is a dataset obtained from the [StatLib repository](https://www.dcc.fc.up.pt/~ltorgo/Regression/cal_housing.html). The data pertains to the houses found in a given California district and some summary stats about them based on the 1990 census data.
+
+```{python}
+california_housing = fetch_california_housing(as_frame=True)
+california_housing.frame.head()
+```
+
+```{python}
+X_train, y_train, X_val, y_val, X_test, y_test = get_california_housing_data()
+print('Train data shape: ', X_train.shape)
+print('Train target values shape: ', y_train.shape)
+print('Validation data shape: ', X_val.shape)
+print('Validation target values shape: ', y_val.shape)
+print('Test data shape: ', X_test.shape)
+print('Test target values shape: ', y_test.shape)
+```
+
+```{python}
+X_train, X_val, X_test = get_california_housing_normalized__data(X_train, X_val, X_test)
+```
+
+# Train a Good Model!
+Train the best fully connected model that you can on california housing, storing your best model in the `california_housing_best_model` variable.
+
+```{python}
+california_housing_best_model = None
+
+################################################################################
+# TODO: Train the best FullyConnectedNet that you can on california housing.   #
+# You might find batch normalization useful. Store your best model in          #
+# the best_model variable.                                                     #
+################################################################################
+# *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+data = {
+    'X_train': X_train,
+    'y_train': y_train.astype(int),
+    'X_val': X_val,
+    'y_val': y_val.astype(int),
+    'X_test': X_test,
+    'y_test': y_test.astype(int)
+}
+
+model = FullyConnectedNet(
+    'regression', 
+    [100, 90],
+    [True, True],
+    input_dim = 8,
+    output_dim=1,
+    dtype=np.float64
+)
+solver = Solver(
+    model, data,
+    update_rule=sgd_momentum,
+    optim_config={
+      'learning_rate': 1e-3,
+    },
+    lr_decay=0.95,
+    num_epochs=5, batch_size=200,
+    print_every=100
+)
+solver.train()
+
+california_housing_solver = solver
+california_housing_best_model = model
+```
+
+```{python}
+# Run this cell to visualize training loss and train / val RMS error
+
+plt.subplot(2, 1, 1)
+plt.title('Training loss')
+plt.plot(california_housing_solver.loss_history, 'o')
+plt.xlabel('Iteration')
+
+plt.subplot(2, 1, 2)
+plt.title('RMS Error')
+plt.plot(california_housing_solver.train_acc_history, '-o', label='train')
+plt.plot(california_housing_solver.val_acc_history, '-o', label='val')
+plt.xlabel('Epoch')
+plt.legend(loc='lower right')
+plt.gcf().set_size_inches(15, 12)
+plt.show()
+```
